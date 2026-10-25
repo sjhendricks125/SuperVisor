@@ -2,27 +2,26 @@ package com.example.supervisor_client.data.local
 
 import android.content.Context
 import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Entity
-data class SystemLogPlaceholderEntity(
-    @PrimaryKey val id: Long = 0
-) {
-    // TODO: Replace with story entities
-}
-
 @Database(
-    entities = [SystemLogPlaceholderEntity::class],
+    entities = [LocationPingEntity::class],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun locationPingDao(): LocationPingDao
+
     companion object {
+        const val RETENTION_PERIOD_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
+
         @Volatile
         private var instance: AppDatabase? = null
+
+        fun thirtyDayCutoffMillis(
+            nowMillis: Long = System.currentTimeMillis()
+        ): Long = nowMillis - RETENTION_PERIOD_MILLIS
 
         fun getInstance(context: Context): AppDatabase =
             instance ?: synchronized(this) {
@@ -30,7 +29,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "supervisor.db"
-                ).build().also { instance = it }
+                ).fallbackToDestructiveMigration(true)
+                    .build()
+                    .also { instance = it }
             }
     }
 }
