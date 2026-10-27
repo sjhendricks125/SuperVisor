@@ -19,6 +19,9 @@ import com.example.supervisor_client.data.local.LocationPingEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import com.example.supervisor_client.databinding.ActivityMainBinding
 import com.example.supervisor_client.services.MonitoringForegroundService
+
+import com.example.supervisor_client.collectors.battery.BatteryCollector
+import com.example.supervisor_client.data.local.BatteryPingEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -35,6 +38,15 @@ class MainActivity : AppCompatActivity() {
     private val locationCollector by lazy {
         LocationCollectorStub(this, locationDao)
     }
+
+    private val batteryDao by lazy {
+        (application as SuperVisorApp).database.batteryPingDao()
+    }
+
+    private val batteryCollector by lazy {
+        BatteryCollector(this, batteryDao)
+    }
+
 
     private val permissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -64,6 +76,7 @@ class MainActivity : AppCompatActivity() {
                 binding.btnTestPing.isEnabled = false
                 try {
                     val ping = locationCollector.collectAndStorePing()
+                    val batteryPing = batteryCollector.collectAndStorePing()
                     refreshPermissionStatus("Last ping: ${ping.status}")
                 } catch (cancelled: CancellationException) {
                     throw cancelled
@@ -87,6 +100,13 @@ class MainActivity : AppCompatActivity() {
                 binding.tvPingLogs.text = pings.joinToString(separator = "\n\n") {
                     formatPing(it)
                 }.ifEmpty { "No location pings yet." }
+            }
+        }
+        lifecycleScope.launch {
+            batteryDao.getAllPingsFlow().collect { pings ->
+                binding.tvBatteryLogs.text = pings.joinToString(separator = "\n\n") {
+                    formatBatteryPing(it)
+                }.ifEmpty { "No battery pings yet." }
             }
         }
         refreshPermissionStatus()
@@ -222,5 +242,23 @@ class MainActivity : AppCompatActivity() {
         return "ID: ${ping.id} | UTC: $timestamp\n" +
             "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
             "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
+    }
+
+    private fun formatBatteryPing(ping: BatteryPingEntity): String {
+        val timestamp = DateTimeFormatter.ISO_INSTANT.format(
+            Instant.ofEpochMilli(ping.timestamp)
+        )
+        val level = ping.levelPercent?.let { "$it%" } ?: "N/A"
+        val charging = when (ping.isCharging) {
+            true -> "Charging (${ping.plugType})"
+            false -> "Not charging"
+            null -> "N/A"
+        }
+        val temp = ping.temperatureCelsius?.let { "%.1f°C".format(it) } ?: "N/A"
+        return "ID: ${ping.id} | UTC: $timestamp\n" +
+                "Level: $level (${ping.levelCategory}) | $charging\n" +
+                "Health: ${ping.health ?: "N/A"} | Temp: $temp | " +
+                "Power save: ${ping.isPowerSaveMode ?: "N/A"}\n" +
+                "Status: ${ping.status} | Synced: ${ping.isSynced}"
     }
 }

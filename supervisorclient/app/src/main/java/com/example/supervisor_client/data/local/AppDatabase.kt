@@ -6,12 +6,16 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [LocationPingEntity::class],
-    version = 1,
+    entities = [
+        LocationPingEntity::class,
+        BatteryPingEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun locationPingDao(): LocationPingDao
+    abstract fun batteryPingDao(): BatteryPingDao
 
     companion object {
         const val RETENTION_PERIOD_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
