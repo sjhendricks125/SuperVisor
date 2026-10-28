@@ -10,19 +10,26 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.example.supervisor_client.collectors.contacts.ContactsCollectorStub
+import com.example.supervisor_client.collectors.contacts.ContactsCollector
+import com.example.supervisor_client.collectors.contacts.ContactsParser
 import com.example.supervisor_client.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     private val contactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
     { granted ->
         if (granted) {
-            val collector = ContactsCollectorStub(this)
+            val collector = ContactsCollector(this)
             val contacts = collector.collectContacts()
+            //Parse Collected contacts into database entities
+            val parsedContacts = ContactsParser.parse(contacts)
 
+
+            //logcat results ")
             Log.d(
                 "SuperVisor",
-                "Contacts retrieve: ${contacts.size}"
+                "Contacts retrieved: ${contacts.size}" +
+                        "\nParsed contacts: ${parsedContacts.size}"
+
             )
 
         } else {
@@ -40,10 +47,12 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.READ_CONTACTS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            val collector = ContactsCollectorStub(this)
+            val collector = ContactsCollector(this)
             val contacts = collector.collectContacts()
+            val parsedContacts = ContactsParser.parse(contacts)
 
             Log.d("SuperVisor", "Contacts retrieved: ${contacts.size}")
+            Log.d("SuperVisor", "Parsed contacts: ${parsedContacts.size}")
         } else {
             contactsPermissionLauncher.launch(
                 Manifest.permission.READ_CONTACTS

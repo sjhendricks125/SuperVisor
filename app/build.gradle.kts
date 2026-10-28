@@ -1,14 +1,11 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace = "com.example.supervisor_client"
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.supervisor_client"
@@ -29,12 +26,16 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
         viewBinding = true
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -51,7 +52,6 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.kotlinx.serialization.json)
-    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

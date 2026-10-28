@@ -9,17 +9,19 @@ import androidx.room.RoomDatabase
 
 @Entity
 data class SystemLogPlaceholderEntity(
-    @PrimaryKey val id: Long = 0
+    @PrimaryKey val id: Long = 0,
 ) {
     // TODO: Replace with story entities
 }
 
 @Database(
-    entities = [SystemLogPlaceholderEntity::class],
+    entities = [SystemLogPlaceholderEntity::class, ContactEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun contactDao(): ContactDao
+
     companion object {
         @Volatile
         private var instance: AppDatabase? = null
@@ -29,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "supervisor.db"
+                    "supervisor.db",
                 ).build().also { instance = it }
             }
     }

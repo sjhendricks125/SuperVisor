@@ -1,4 +1,3 @@
-
 package com.example.supervisor_client.collectors.contacts
 
 import android.Manifest
@@ -8,13 +7,8 @@ import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import com.example.supervisor_client.collectors.DataCollector
 
-data class ContactInfo(
-    val name: String,
-    val phoneNumber: String
-)
-
-class ContactsCollectorStub(
-    private val context: Context
+class ContactsCollector(
+    private val context: Context,
 ) : DataCollector {
 
     fun collectContacts(): List<ContactInfo> {
