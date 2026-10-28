@@ -56,6 +56,28 @@
                 android:layout_height="wrap_content"
                 android:text="Start Scheduled Monitoring" />
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchMessageLogging"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/message_notification_logging"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:id="@+id/tvMessageLoggingStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:text="@string/message_notification_logging_off"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <Button
+                android:id="@+id/btnManageNotificationAccess"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/manage_notification_access" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -70,6 +92,22 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
                 android:text="No location pings yet."
+                android:textIsSelectable="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
+                android:text="@string/recent_message_notification_logs"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:id="@+id/tvMessageLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="@string/no_message_notification_logs"
                 android:textIsSelectable="true" />
         </LinearLayout>
     </ScrollView>

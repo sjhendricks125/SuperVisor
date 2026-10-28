@@ -1,11 +1,14 @@
 package com.example.supervisor_client
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -14,7 +17,9 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.supervisor_client.collectors.messages.MessageLogCollector
 import com.example.supervisor_client.collectors.location.LocationCollectorStub
+import com.example.supervisor_client.data.local.MessageNotificationLogEntity
 import com.example.supervisor_client.data.local.LocationPingEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import com.example.supervisor_client.databinding.ActivityMainBinding
@@ -28,9 +33,13 @@ import java.time.format.DateTimeFormatter
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var monitoringEnabled = false
+    private var updatingMessageLoggingSwitch = false
 
     private val locationDao by lazy {
         (application as SuperVisorApp).database.locationPingDao()
+    }
+    private val messageNotificationLogDao by lazy {
+        (application as SuperVisorApp).database.messageNotificationLogDao()
     }
     private val locationCollector by lazy {
         LocationCollectorStub(this, locationDao)
@@ -81,6 +90,22 @@ class MainActivity : AppCompatActivity() {
         binding.btnToggleService.setOnClickListener {
             toggleMonitoringService()
         }
+        binding.switchMessageLogging.setOnCheckedChangeListener { _, enabled ->
+            if (updatingMessageLoggingSwitch) return@setOnCheckedChangeListener
+
+            MonitoringConfigStore.setMessageNotificationLoggingEnabled(this, enabled)
+            if (enabled && !hasNotificationListenerAccess()) {
+                binding.tvMessageLoggingStatus.setText(
+                    R.string.notification_access_required
+                )
+                openNotificationAccessSettings()
+            } else {
+                refreshMessageLoggingStatus()
+            }
+        }
+        binding.btnManageNotificationAccess.setOnClickListener {
+            openNotificationAccessSettings()
+        }
 
         lifecycleScope.launch {
             locationDao.getAllPingsFlow().collect { pings ->
@@ -89,7 +114,15 @@ class MainActivity : AppCompatActivity() {
                 }.ifEmpty { "No location pings yet." }
             }
         }
+        lifecycleScope.launch {
+            messageNotificationLogDao.getRecentLogsFlow().collect { logs ->
+                binding.tvMessageLogs.text = logs.joinToString(separator = "\n") {
+                    formatMessageNotificationLog(it)
+                }.ifEmpty { getString(R.string.no_message_notification_logs) }
+            }
+        }
         refreshPermissionStatus()
+        refreshMessageLoggingStatus()
         updateMonitoringButton()
     }
 
@@ -104,6 +137,7 @@ class MainActivity : AppCompatActivity() {
                 )
             }
             refreshPermissionStatus()
+            refreshMessageLoggingStatus()
         }
     }
 
@@ -212,6 +246,47 @@ class MainActivity : AppCompatActivity() {
             "Location permission: $permissionStatus\nGPS: $gpsStatus$notificationStatus$detail"
     }
 
+    private fun hasNotificationListenerAccess(): Boolean {
+        val enabledListeners = Settings.Secure.getString(
+            contentResolver,
+            KEY_ENABLED_NOTIFICATION_LISTENERS
+        ) ?: return false
+        val appListener = ComponentName(this, MessageLogCollector::class.java)
+        return enabledListeners.split(':')
+            .mapNotNull { ComponentName.unflattenFromString(it) }
+            .contains(appListener)
+    }
+
+    private fun openNotificationAccessSettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        } catch (_: ActivityNotFoundException) {
+            MonitoringConfigStore.setMessageNotificationLoggingEnabled(this, false)
+            refreshMessageLoggingStatus(
+                getString(R.string.notification_settings_unavailable)
+            )
+        }
+    }
+
+    private fun refreshMessageLoggingStatus(message: String? = null) {
+        val hasAccess = hasNotificationListenerAccess()
+        val loggingEnabled =
+            MonitoringConfigStore.isMessageNotificationLoggingEnabled(this) && hasAccess
+        if (!hasAccess) {
+            MonitoringConfigStore.setMessageNotificationLoggingEnabled(this, false)
+        }
+
+        updatingMessageLoggingSwitch = true
+        binding.switchMessageLogging.isChecked = loggingEnabled
+        updatingMessageLoggingSwitch = false
+
+        binding.tvMessageLoggingStatus.text = message ?: when {
+            loggingEnabled -> getString(R.string.message_notification_logging_on)
+            hasAccess -> getString(R.string.notification_logging_off_but_access_granted)
+            else -> getString(R.string.message_notification_logging_off)
+        }
+    }
+
     private fun formatPing(ping: LocationPingEntity): String {
         val timestamp = DateTimeFormatter.ISO_INSTANT.format(
             Instant.ofEpochMilli(ping.timestamp)
@@ -222,5 +297,16 @@ class MainActivity : AppCompatActivity() {
         return "ID: ${ping.id} | UTC: $timestamp\n" +
             "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
             "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
+    }
+
+    private fun formatMessageNotificationLog(log: MessageNotificationLogEntity): String {
+        val timestamp = DateTimeFormatter.ISO_INSTANT.format(
+            Instant.ofEpochMilli(log.timestamp)
+        )
+        return "$timestamp | ${log.sender}"
+    }
+
+    private companion object {
+        const val KEY_ENABLED_NOTIFICATION_LISTENERS = "enabled_notification_listeners"
     }
 }
