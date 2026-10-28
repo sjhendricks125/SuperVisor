@@ -18,14 +18,9 @@ import com.example.supervisor_client.SuperVisorApp
 import com.example.supervisor_client.collectors.location.LocationCollectorStub
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 class MonitoringForegroundService : Service() {
     companion object {
@@ -44,7 +39,7 @@ class MonitoringForegroundService : Service() {
             private set
 
         fun startOrUpdateSchedule(context: Context, intervalMinutes: Long) {
-            val safeInterval = intervalMinutes.coerceAtLeast(1L)
+            val safeInterval = MonitoringConfigStore.normalizePingIntervalMinutes(intervalMinutes)
             MonitoringConfigStore.setPingIntervalMinutes(context, safeInterval)
             val intent = Intent(context, MonitoringForegroundService::class.java)
                 .setAction(ACTION_START_MONITORING)
@@ -54,7 +49,7 @@ class MonitoringForegroundService : Service() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var monitoringJob: Job? = null
+    private val monitoringJobController = MonitoringJobController(serviceScope)
 
     private val locationCollector by lazy {
         val dao = (application as SuperVisorApp).database.locationPingDao()
@@ -65,8 +60,7 @@ class MonitoringForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_MONITORING) {
-            monitoringJob?.cancel()
-            monitoringJob = null
+            monitoringJobController.stop()
             isMonitoring = false
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -100,33 +94,25 @@ class MonitoringForegroundService : Service() {
             ?: MonitoringConfigStore.getPingIntervalMinutes(this)
         MonitoringConfigStore.setPingIntervalMinutes(this, intervalMinutes)
 
-        val previousJob = monitoringJob
-        previousJob?.cancel()
-        monitoringJob = serviceScope.launch {
-            previousJob?.join()
-            while (isActive) {
-                try {
+        monitoringJobController.start {
+            runMonitoringLoop(
+                collectPing = {
                     locationCollector.collectAndStorePing()
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (exception: Exception) {
+                },
+                intervalMinutes = {
+                    MonitoringConfigStore.getPingIntervalMinutes(this@MonitoringForegroundService)
+                },
+                onError = { exception ->
                     Log.e(TAG, "Location ping collection failed", exception)
                 }
-                val currentInterval = MonitoringConfigStore
-                    .getPingIntervalMinutes(this@MonitoringForegroundService)
-                    .coerceAtLeast(1L)
-                val delayMillis = currentInterval
-                    .coerceAtMost(Long.MAX_VALUE / 60_000L) * 60_000L
-                delay(delayMillis)
-            }
+            )
         }
         isMonitoring = true
         return START_STICKY
     }
 
     override fun onDestroy() {
-        monitoringJob?.cancel()
-        monitoringJob = null
+        monitoringJobController.stop()
         serviceScope.cancel()
         isMonitoring = false
         super.onDestroy()

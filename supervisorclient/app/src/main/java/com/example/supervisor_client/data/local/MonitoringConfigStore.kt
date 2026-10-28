@@ -10,12 +10,15 @@ object MonitoringConfigStore {
     fun getPingIntervalMinutes(context: Context): Long =
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getLong(KEY_PING_INTERVAL_MINUTES, DEFAULT_PING_INTERVAL_MINUTES)
-            .coerceAtLeast(1L)
+            .let(::normalizePingIntervalMinutes)
 
     fun setPingIntervalMinutes(context: Context, minutes: Long) {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putLong(KEY_PING_INTERVAL_MINUTES, minutes.coerceAtLeast(1L))
+            .putLong(KEY_PING_INTERVAL_MINUTES, normalizePingIntervalMinutes(minutes))
             .apply()
     }
+
+    internal fun normalizePingIntervalMinutes(minutes: Long): Long =
+        minutes.coerceAtLeast(1L)
 }
