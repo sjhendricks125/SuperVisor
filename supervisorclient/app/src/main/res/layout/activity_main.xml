@@ -72,6 +72,32 @@
                 android:text="No location pings yet."
                 android:textIsSelectable="true" />
 
+            <EditText
+                android:id="@+id/etBatteryIntervalMinutes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Battery interval (minutes)"
+                android:inputType="number" />
+
+            <Button
+                android:id="@+id/btnBatteryTestPing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Test Battery Ping" />
+
+            <Button
+                android:id="@+id/btnBatteryToggleService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start Battery Monitoring" />
+
+            <TextView
+                android:id="@+id/tvBatteryStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Battery monitoring: stopped" />
+
             <TextView
                 android:id="@+id/tvBatteryLogs"
                 android:layout_width="match_parent"
