@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">supervisor-client</string>
+    <string name="notification_listener_label">SuperVisor message notification logging</string>
+    <string name="message_notification_logging">Log notifications from the default SMS app</string>
+    <string name="message_notification_logging_off">Logging is off. When enabled, the default SMS app notification title is saved as the sender label with its timestamp on this device only for up to 30 days. These logs are not backed up, and message content is not stored.</string>
+    <string name="message_notification_logging_on">Logging is on. The default SMS app notification title is saved as the sender label with its timestamp on this device only for up to 30 days. These logs are not backed up, and message content is not stored.</string>
+    <string name="notification_access_required">Android notification access is required. Enable SuperVisor in the system settings screen.</string>
+    <string name="notification_settings_unavailable">Could not open Android notification access settings. Logging was turned off.</string>
+    <string name="notification_logging_off_but_access_granted">Logging is off. Android notification access is still granted; use the settings button to revoke it.</string>
+    <string name="manage_notification_access">Manage Android Notification Access</string>
+    <string name="recent_message_notification_logs">Recent message notification logs</string>
+    <string name="no_message_notification_logs">No message notification logs yet.</string>
 </resources>
