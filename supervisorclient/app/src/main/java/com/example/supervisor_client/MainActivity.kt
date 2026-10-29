@@ -22,7 +22,6 @@ import com.example.supervisor_client.collectors.location.LocationCollectorStub
 import com.example.supervisor_client.data.local.BatteryConfigStore // BATTERY
 import com.example.supervisor_client.data.local.BatteryPingEntity // BATTERY
 import com.example.supervisor_client.collectors.messages.MessageLogCollector
-import com.example.supervisor_client.collectors.location.LocationCollectorStub
 import com.example.supervisor_client.data.local.MessageNotificationLogEntity
 import com.example.supervisor_client.data.local.LocationPingEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
@@ -163,6 +162,8 @@ class MainActivity : AppCompatActivity() {
                 binding.tvBatteryLogs.text = pings.joinToString(separator = "\n\n") {
                     formatBatteryPing(it)
                 }.ifEmpty { "No battery pings yet." }
+            }
+        }
         lifecycleScope.launch {
             messageNotificationLogDao.getRecentLogsFlow().collect { logs ->
                 binding.tvMessageLogs.text = logs.joinToString(separator = "\n") {
