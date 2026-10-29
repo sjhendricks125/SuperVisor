@@ -86,7 +86,8 @@ class MessageLogDatabaseMigrationTest {
             AppDatabase.MIGRATION_1_2,
             AppDatabase.migrationToVersion3(
                 context.getDatabasePath(MessageLogDatabase.DATABASE_NAME).absolutePath
-            )
+            ),
+            AppDatabase.MIGRATION_3_4
         ).setJournalMode(RoomDatabase.JournalMode.TRUNCATE).build()
 
         legacyDatabase.openHelper.writableDatabase
@@ -130,7 +131,8 @@ class MessageLogDatabaseMigrationTest {
             AppDatabase.MIGRATION_1_2,
             AppDatabase.migrationToVersion3(
                 context.getDatabasePath(MessageLogDatabase.DATABASE_NAME).absolutePath
-            )
+            ),
+            AppDatabase.MIGRATION_3_4
         ).setJournalMode(RoomDatabase.JournalMode.TRUNCATE).build()
         legacyDatabase.openHelper.writableDatabase
 
@@ -141,6 +143,28 @@ class MessageLogDatabaseMigrationTest {
                 .first()
                 .map { it.sender to it.timestamp }
         )
+    }
+
+    @Test
+    fun migrationCreatesMissingTablesForVersion3Database() {
+        val legacyFile = context.getDatabasePath(LEGACY_DATABASE_NAME)
+        SQLiteDatabase.openDatabase(
+            legacyFile.absolutePath,
+            null,
+            SQLiteDatabase.OPEN_READWRITE
+        ).use { database ->
+            database.execSQL("PRAGMA user_version = 3")
+        }
+
+        legacyDatabase = Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            LEGACY_DATABASE_NAME
+        ).addMigrations(
+            AppDatabase.MIGRATION_3_4
+        ).build()
+
+        legacyDatabase.openHelper.writableDatabase
     }
 
     private companion object {
