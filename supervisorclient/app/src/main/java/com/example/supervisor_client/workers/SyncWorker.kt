@@ -11,8 +11,13 @@ class SyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val dao = (applicationContext as SuperVisorApp).database.locationPingDao()
-        dao.purgePingsOlderThan(AppDatabase.thirtyDayCutoffMillis())
+        val database = (applicationContext as SuperVisorApp).database
+        val cutoff = AppDatabase.thirtyDayCutoffMillis()
+        val dao = database.locationPingDao()
+        dao.purgePingsOlderThan(cutoff)
+        (applicationContext as SuperVisorApp).messageLogDatabase
+            .messageNotificationLogDao()
+            .purgeLogsOlderThan(cutoff)
         val unsynced = dao.getUnsyncedPings()
         // TODO: Sync unsynced pings with ApiSyncClient and pass remote officer interval to MonitoringConfigStore.setPingIntervalMinutes()
         return Result.success()

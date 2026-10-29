@@ -41,6 +41,18 @@ internal class AndroidLocationDataSource(context: Context) : LocationDataSource 
     }
 
     override suspend fun getCurrentLocation(): LocationReading? {
+        val hasFineLocationPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarseLocationPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasFineLocationPermission && !hasCoarseLocationPermission) {
+            throw SecurityException("Location permission is not granted")
+        }
+
         val cancellationTokenSource = CancellationTokenSource()
         return try {
             fusedLocationProviderClient.getCurrentLocation(
