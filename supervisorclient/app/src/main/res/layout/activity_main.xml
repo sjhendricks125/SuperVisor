@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:gravity="center"
+                android:text="Supervisor Client"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/viewInstalledAppsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="View Installed Applications" />
+
+            <Button
+                android:id="@+id/viewAppChangesButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="View Application Changes" />
+
+            <TextView
+                android:id="@+id/tvPermissionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:paddingBottom="12dp"
+                android:text="Location permission: checking&#10;GPS: checking"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <EditText
+                android:id="@+id/etIntervalMinutes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Ping interval (minutes)"
+                android:inputType="number"
+                android:singleLine="true" />
+
+            <Button
+                android:id="@+id/btnGrantPermissions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Grant Location Permissions" />
+
+            <Button
+                android:id="@+id/btnTestPing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ping Location Now" />
+
+            <Button
+                android:id="@+id/btnToggleService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start Scheduled Monitoring" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchMessageLogging"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/message_notification_logging"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:id="@+id/tvMessageLoggingStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:text="@string/message_notification_logging_off"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <Button
+                android:id="@+id/btnManageNotificationAccess"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/manage_notification_access" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
+                android:text="Recent location pings"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:id="@+id/tvPingLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="No location pings yet."
+                android:textIsSelectable="true" />
+
+            <EditText
+                android:id="@+id/etBatteryIntervalMinutes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Battery interval (minutes)"
+                android:inputType="number" />
+
+            <Button
+                android:id="@+id/btnBatteryTestPing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Test Battery Ping" />
+
+            <Button
+                android:id="@+id/btnBatteryToggleService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start Battery Monitoring" />
+
+            <TextView
+                android:id="@+id/tvBatteryStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Battery monitoring: stopped" />
+
+            <TextView
+                android:id="@+id/tvBatteryLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="No battery pings yet." />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
+                android:text="@string/recent_message_notification_logs"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:id="@+id/tvMessageLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="@string/no_message_notification_logs"
+                android:textIsSelectable="true" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
