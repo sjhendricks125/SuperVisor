@@ -7,6 +7,7 @@ import org.junit.Test
 class ContactsParserTest {
 
     @Test
+    //UT-01
     fun parsesValidContact() {
         val contacts = listOf(
             ContactInfo("Test Person", "3175550100"),
@@ -20,6 +21,7 @@ class ContactsParserTest {
     }
 
     @Test
+    //UT-02
     fun removesExtraWhitespace() {
         val contacts = listOf(
             ContactInfo("  Test Person  ", " 3175550100 "),
@@ -30,7 +32,7 @@ class ContactsParserTest {
         assertEquals("Test Person", result[0].name)
         assertEquals("3175550100", result[0].phoneNumber)
     }
-
+    //UT-03
     @Test
     fun skipsBlankPhoneNumber() {
         val contacts = listOf(
@@ -41,7 +43,7 @@ class ContactsParserTest {
 
         assertTrue(result.isEmpty())
     }
-
+    //UT-04
     @Test
     fun skipsWhitespaceOnlyPhoneNumber() {
         val contacts = listOf(
@@ -52,14 +54,14 @@ class ContactsParserTest {
 
         assertTrue(result.isEmpty())
     }
-
+    //UT-05
     @Test
     fun handlesEmptyContactList() {
         val result = ContactsParser.parse(emptyList())
 
         assertTrue(result.isEmpty())
     }
-
+    //UT-06
     @Test
     fun parsesMultipleContacts() {
         val contacts = listOf(

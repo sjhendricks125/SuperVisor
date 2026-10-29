@@ -18,9 +18,10 @@ class MainActivity : AppCompatActivity() {
     private val contactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
     { granted ->
         if (granted) {
+            //FT-03
             val collector = ContactsCollector(this)
             val contacts = collector.collectContacts()
-            //Parse Collected contacts into database entities
+            //FT-04
             val parsedContacts = ContactsParser.parse(contacts)
 
 
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        //FT-01
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.READ_CONTACTS
