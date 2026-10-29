@@ -1,22 +1,14 @@
 package com.example.supervisor_client
 
-import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
 import com.example.supervisor_client.collectors.apps.AppInstallCollectorStub
-import com.example.supervisor_client.data.local.AppDatabase
-import com.example.supervisor_client.data.local.InstalledAppEntity
 import com.example.supervisor_client.services.MonitoringApplicationInstallsService
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import java.text.DateFormat
-import java.util.Date
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,7 +21,8 @@ class MainActivity : AppCompatActivity() {
         val mainView = findViewById<View>(R.id.main)
 
         ViewCompat.setOnApplyWindowInsetsListener(mainView) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val systemBars =
+                insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
             v.setPadding(
                 systemBars.left,
@@ -44,69 +37,30 @@ class MainActivity : AppCompatActivity() {
         AppInstallCollectorStub(this).logAllInstalledApps()
 
         val serviceIntent =
-            android.content.Intent(this, MonitoringApplicationInstallsService::class.java)
+            Intent(this, MonitoringApplicationInstallsService::class.java)
 
         startForegroundService(serviceIntent)
 
-        observeInstalledApps()
-    }
+        findViewById<android.widget.Button>(R.id.viewInstalledAppsButton)
+            .setOnClickListener {
 
-    private fun observeInstalledApps() {
+                val intent = Intent(
+                    this,
+                    InstalledAppsActivity::class.java
+                )
 
-        val database = AppDatabase.getInstance(this)
+                startActivity(intent)
+            }
 
-        lifecycleScope.launch {
+        findViewById<android.widget.Button>(R.id.viewAppChangesButton)
+            .setOnClickListener {
 
-            database.installedAppDao()
-                .getAllAppsFlow()
-                .collectLatest { apps ->
+                val intent = Intent(
+                    this,
+                    AppChangesActivity::class.java
+                )
 
-                    displayApps(apps)
-                }
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun displayApps(apps: List<InstalledAppEntity>) {
-
-        val appList = findViewById<android.widget.LinearLayout>(R.id.appList)
-
-        // Keep the "Installed Applications" title.
-        // Remove everything after it.
-        if (appList.childCount > 1) {
-            appList.removeViews(1, appList.childCount - 1)
-        }
-
-        for (app in apps) {
-
-            val appText = TextView(this)
-
-            val firstSeen = DateFormat.getDateTimeInstance().format(
-                Date(app.firstSeen)
-            )
-
-            val lastSeen = DateFormat.getDateTimeInstance().format(
-                Date(app.lastSeen)
-            )
-
-            appText.text =
-                "${app.appName}\n" +
-                        "${app.packageName}\n" +
-                        "Version: ${app.versionName}\n" +
-                        "System App: ${app.isSystemApp}\n" +
-                        "First Seen: $firstSeen\n" +
-                        "Last Seen: $lastSeen"
-
-            appText.textSize = 16f
-
-            appText.setPadding(
-                0,
-                12,
-                0,
-                20
-            )
-
-            appList.addView(appText)
-        }
+                startActivity(intent)
+            }
     }
 }

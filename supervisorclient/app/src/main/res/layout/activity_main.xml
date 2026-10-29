@@ -18,19 +18,32 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
-            android:id="@+id/appList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Installed Applications"
+                android:gravity="center"
+                android:text="Supervisor Client"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:paddingBottom="16dp" />
+                android:layout_marginBottom="20dp" />
+
+            <Button
+                android:id="@+id/viewInstalledAppsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="View Installed Applications" />
+
+            <Button
+                android:id="@+id/viewAppChangesButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="View Application Changes" />
 
         </LinearLayout>
 
