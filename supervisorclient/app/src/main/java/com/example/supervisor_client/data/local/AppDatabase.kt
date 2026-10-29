@@ -8,12 +8,16 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [LocationPingEntity::class],
-    version = 3,
+    entities = [
+        LocationPingEntity::class,
+        BatteryPingEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun locationPingDao(): LocationPingDao
+    abstract fun batteryPingDao(): BatteryPingDao
 
     companion object {
         const val RETENTION_PERIOD_MILLIS: Long = 30L * 24 * 60 * 60 * 1000

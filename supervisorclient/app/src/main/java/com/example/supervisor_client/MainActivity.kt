@@ -17,12 +17,17 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.supervisor_client.collectors.battery.BatteryCollector // BATTERY
+import com.example.supervisor_client.collectors.location.LocationCollectorStub
+import com.example.supervisor_client.data.local.BatteryConfigStore // BATTERY
+import com.example.supervisor_client.data.local.BatteryPingEntity // BATTERY
 import com.example.supervisor_client.collectors.messages.MessageLogCollector
 import com.example.supervisor_client.collectors.location.LocationCollectorStub
 import com.example.supervisor_client.data.local.MessageNotificationLogEntity
 import com.example.supervisor_client.data.local.LocationPingEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import com.example.supervisor_client.databinding.ActivityMainBinding
+import com.example.supervisor_client.services.BatteryMonitoringService // BATTERY
 import com.example.supervisor_client.services.MonitoringForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -33,6 +38,7 @@ import java.time.format.DateTimeFormatter
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var monitoringEnabled = false
+    private var batteryMonitoringEnabled = false // BATTERY
     private var updatingMessageLoggingSwitch = false
 
     private val locationDao by lazy {
@@ -43,6 +49,13 @@ class MainActivity : AppCompatActivity() {
     }
     private val locationCollector by lazy {
         LocationCollectorStub(this, locationDao)
+    }
+
+    private val batteryDao by lazy {
+        (application as SuperVisorApp).database.batteryPingDao()
+    }
+    private val batteryCollector by lazy {
+        BatteryCollector(this, batteryDao)
     }
 
     private val permissionRequest = registerForActivityResult(
@@ -65,9 +78,14 @@ class MainActivity : AppCompatActivity() {
         binding.etIntervalMinutes.setText(
             MonitoringConfigStore.getPingIntervalMinutes(this).toString()
         )
+        binding.etBatteryIntervalMinutes.setText(
+            BatteryConfigStore.getPingIntervalMinutes(this).toString()
+        )
+
         binding.btnGrantPermissions.setOnClickListener {
             permissionRequest.launch(requiredPermissions())
         }
+
         binding.btnTestPing.setOnClickListener {
             lifecycleScope.launch {
                 binding.btnTestPing.isEnabled = false
@@ -107,6 +125,31 @@ class MainActivity : AppCompatActivity() {
             openNotificationAccessSettings()
         }
 
+        binding.btnBatteryTestPing.setOnClickListener {
+            lifecycleScope.launch {
+                binding.btnBatteryTestPing.isEnabled = false
+                try {
+                    val ping = batteryCollector.collectAndStorePing()
+                    refreshBatteryStatus(
+                        "Last ping: ${ping.status} | Battery: ${ping.levelPercent ?: "N/A"}%"
+                    )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (exception: Exception) {
+                    refreshBatteryStatus(
+                        "Ping failed: ${exception.message ?: "unknown error"}"
+                    )
+                } finally {
+                    if (!isDestroyed) {
+                        binding.btnBatteryTestPing.isEnabled = true
+                    }
+                }
+            }
+        }
+        binding.btnBatteryToggleService.setOnClickListener {
+            toggleBatteryMonitoringService()
+        }
+
         lifecycleScope.launch {
             locationDao.getAllPingsFlow().collect { pings ->
                 binding.tvPingLogs.text = pings.joinToString(separator = "\n\n") {
@@ -114,6 +157,12 @@ class MainActivity : AppCompatActivity() {
                 }.ifEmpty { "No location pings yet." }
             }
         }
+        // BATTERY
+        lifecycleScope.launch {
+            batteryDao.getAllPingsFlow().collect { pings ->
+                binding.tvBatteryLogs.text = pings.joinToString(separator = "\n\n") {
+                    formatBatteryPing(it)
+                }.ifEmpty { "No battery pings yet." }
         lifecycleScope.launch {
             messageNotificationLogDao.getRecentLogsFlow().collect { logs ->
                 binding.tvMessageLogs.text = logs.joinToString(separator = "\n") {
@@ -124,19 +173,30 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionStatus()
         refreshMessageLoggingStatus()
         updateMonitoringButton()
+        updateBatteryMonitoringButton() // BATTERY
+        refreshBatteryStatus() // BATTERY
     }
 
     override fun onResume() {
         super.onResume()
         if (::binding.isInitialized) {
             monitoringEnabled = MonitoringForegroundService.isMonitoring
+            batteryMonitoringEnabled = BatteryMonitoringService.isMonitoring // BATTERY
             updateMonitoringButton()
+            updateBatteryMonitoringButton() // BATTERY
             if (!binding.etIntervalMinutes.hasFocus()) {
                 binding.etIntervalMinutes.setText(
                     MonitoringConfigStore.getPingIntervalMinutes(this).toString()
                 )
             }
+            // BATTERY
+            if (!binding.etBatteryIntervalMinutes.hasFocus()) {
+                binding.etBatteryIntervalMinutes.setText(
+                    BatteryConfigStore.getPingIntervalMinutes(this).toString()
+                )
+            }
             refreshPermissionStatus()
+            refreshBatteryStatus()
             refreshMessageLoggingStatus()
         }
     }
@@ -149,6 +209,7 @@ class MainActivity : AppCompatActivity() {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }.toTypedArray()
+
 
     private fun toggleMonitoringService() {
         if (monitoringEnabled) {
@@ -295,8 +356,77 @@ class MainActivity : AppCompatActivity() {
         val longitude = ping.longitude?.toString() ?: "N/A"
         val accuracy = ping.accuracyRadius?.let { "$it m" } ?: "N/A"
         return "ID: ${ping.id} | UTC: $timestamp\n" +
-            "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
-            "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
+                "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
+                "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
+    }
+
+    private fun toggleBatteryMonitoringService() {
+        if (batteryMonitoringEnabled) {
+            startService(
+                Intent(this, BatteryMonitoringService::class.java)
+                    .setAction(BatteryMonitoringService.ACTION_STOP_MONITORING)
+            )
+            batteryMonitoringEnabled = false
+            updateBatteryMonitoringButton()
+            refreshBatteryStatus("Battery monitoring stopped.")
+            return
+        }
+
+        val intervalMinutes = binding.etBatteryIntervalMinutes.text
+            .toString()
+            .trim()
+            .toLongOrNull()
+        if (intervalMinutes == null || intervalMinutes !in 1L..10_080L) {
+            binding.etBatteryIntervalMinutes.error =
+                "Enter an interval from 1 to 10080 minutes."
+            return
+        }
+        binding.etBatteryIntervalMinutes.error = null
+
+        try {
+            BatteryMonitoringService.startOrUpdateSchedule(this, intervalMinutes)
+            batteryMonitoringEnabled = true
+            updateBatteryMonitoringButton()
+            refreshBatteryStatus("Battery monitoring started.")
+        } catch (exception: Exception) {
+            batteryMonitoringEnabled = false
+            updateBatteryMonitoringButton()
+            refreshBatteryStatus(
+                "Unable to start battery monitoring: ${exception.message ?: "unknown error"}"
+            )
+        }
+    }
+
+    private fun updateBatteryMonitoringButton() {
+        binding.btnBatteryToggleService.text = if (batteryMonitoringEnabled) {
+            "Stop Battery Monitoring"
+        } else {
+            "Start Battery Monitoring"
+        }
+    }
+
+    private fun refreshBatteryStatus(message: String? = null) {
+        val state = if (batteryMonitoringEnabled) "running" else "stopped"
+        val detail = message?.let { "\n$it" } ?: ""
+        binding.tvBatteryStatus.text = "Battery monitoring: $state$detail"
+    }
+
+    private fun formatBatteryPing(ping: BatteryPingEntity): String {
+        val timestamp = DateTimeFormatter.ISO_INSTANT.format(
+            Instant.ofEpochMilli(ping.timestamp)
+        )
+        val level = ping.levelPercent?.let { "$it%" } ?: "N/A"
+        val charging = when (ping.isCharging) {
+            true -> "Charging (${ping.plugType})"
+            false -> "Not charging"
+            null -> "N/A"
+        }
+        val temp = ping.temperatureCelsius?.let { "%.1f°C".format(it) } ?: "N/A"
+        return "ID: ${ping.id} | UTC: $timestamp\n" +
+                "Level: $level (${ping.levelCategory}) | $charging\n" +
+                "Health: ${ping.health ?: "N/A"} | Temp: $temp | " +
+                "Power save: ${ping.isPowerSaveMode ?: "N/A"}\n" +
+                "Status: ${ping.status} | Synced: ${ping.isSynced}"
     }
 
     private fun formatMessageNotificationLog(log: MessageNotificationLogEntity): String {
