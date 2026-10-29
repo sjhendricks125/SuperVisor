@@ -10,7 +10,6 @@ internal class AndroidBatteryDataSource(context: Context) : BatteryDataSource {
     private val context = context.applicationContext
 
     override fun getCurrentReading(): BatteryReading? {
-        // null receiver = just return the current sticky broadcast
         val intent = context.registerReceiver(
             null,
             IntentFilter(Intent.ACTION_BATTERY_CHANGED)

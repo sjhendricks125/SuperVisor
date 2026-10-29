@@ -68,7 +68,6 @@ class MainActivity : AppCompatActivity() {
         binding.etIntervalMinutes.setText(
             MonitoringConfigStore.getPingIntervalMinutes(this).toString()
         )
-        // BATTERY
         binding.etBatteryIntervalMinutes.setText(
             BatteryConfigStore.getPingIntervalMinutes(this).toString()
         )
@@ -77,7 +76,6 @@ class MainActivity : AppCompatActivity() {
             permissionRequest.launch(requiredPermissions())
         }
 
-        // ---- Location controls: identical to the original ----
         binding.btnTestPing.setOnClickListener {
             lifecycleScope.launch {
                 binding.btnTestPing.isEnabled = false
@@ -101,7 +99,6 @@ class MainActivity : AppCompatActivity() {
             toggleMonitoringService()
         }
 
-        // ---- Battery controls: separate ---- // BATTERY
         binding.btnBatteryTestPing.setOnClickListener {
             lifecycleScope.launch {
                 binding.btnBatteryTestPing.isEnabled = false
@@ -167,7 +164,7 @@ class MainActivity : AppCompatActivity() {
                 )
             }
             refreshPermissionStatus()
-            refreshBatteryStatus() // BATTERY
+            refreshBatteryStatus()
         }
     }
 
@@ -180,7 +177,6 @@ class MainActivity : AppCompatActivity() {
             }
         }.toTypedArray()
 
-    // ---------------- Location monitoring (unchanged) ----------------
 
     private fun toggleMonitoringService() {
         if (monitoringEnabled) {
@@ -289,8 +285,6 @@ class MainActivity : AppCompatActivity() {
                 "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
                 "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
     }
-
-    // ---------------- Battery monitoring (new) ---------------- // BATTERY
 
     private fun toggleBatteryMonitoringService() {
         if (batteryMonitoringEnabled) {

@@ -13,7 +13,6 @@ class BatteryCollector internal constructor(
     private val nowMillis: () -> Long = System::currentTimeMillis
 ) : DataCollector {
 
-    // Keeps existing call sites like BatteryCollector(this, batteryDao) working
     constructor(context: Context, dao: BatteryPingDao) :
             this(AndroidBatteryDataSource(context), dao)
 
