@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.junit.ktx)
     implementation(libs.material)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

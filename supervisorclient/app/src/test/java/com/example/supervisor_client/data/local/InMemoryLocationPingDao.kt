@@ -3,25 +3,25 @@ package com.example.supervisor_client.data.local
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-internal class InMemoryLocationPingDao : LocationPingDao {
+internal class InMemoryBatteryPingDao : BatteryPingDao {
     private var nextId = 1L
-    private val currentPings = mutableListOf<LocationPingEntity>()
-    private val pingsState = MutableStateFlow<List<LocationPingEntity>>(emptyList())
+    private val currentPings = mutableListOf<BatteryPingEntity>()
+    private val pingsState = MutableStateFlow<List<BatteryPingEntity>>(emptyList())
 
-    val pings: List<LocationPingEntity>
+    val pings: List<BatteryPingEntity>
         get() = currentPings.toList()
 
     var lastPurgeCutoff: Long? = null
         private set
 
-    override suspend fun insertPing(ping: LocationPingEntity): Long {
+    override suspend fun insertPing(ping: BatteryPingEntity): Long {
         val id = nextId++
         currentPings += ping.copy(id = id)
         publish()
         return id
     }
 
-    override suspend fun getUnsyncedPings(): List<LocationPingEntity> =
+    override suspend fun getUnsyncedPings(): List<BatteryPingEntity> =
         currentPings.filterNot { it.isSynced }.sortedBy { it.timestamp }
 
     override suspend fun markPingsAsSynced(ids: List<Long>) {
@@ -35,7 +35,7 @@ internal class InMemoryLocationPingDao : LocationPingDao {
         publish()
     }
 
-    override fun getAllPingsFlow(): Flow<List<LocationPingEntity>> = pingsState
+    override fun getAllPingsFlow(): Flow<List<BatteryPingEntity>> = pingsState
 
     override suspend fun purgePingsOlderThan(cutoffTimestamp: Long): Int {
         lastPurgeCutoff = cutoffTimestamp

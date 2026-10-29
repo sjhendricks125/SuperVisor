@@ -57,7 +57,13 @@
             android:name=".services.MonitoringApplicationInstallsService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Monitoring application installations and uninstallations for device supervision" />
+
+        </service>
 
         <service
             android:name=".services.BatteryMonitoringService"

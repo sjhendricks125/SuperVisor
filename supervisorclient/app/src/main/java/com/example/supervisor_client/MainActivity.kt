@@ -17,6 +17,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.supervisor_client.collectors.apps.AppInstallCollectorStub
 import com.example.supervisor_client.collectors.battery.BatteryCollector
 import com.example.supervisor_client.collectors.location.LocationCollectorStub
 import com.example.supervisor_client.collectors.messages.MessageLogCollector
@@ -27,10 +28,11 @@ import com.example.supervisor_client.data.local.MessageNotificationLogEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import com.example.supervisor_client.databinding.ActivityMainBinding
 import com.example.supervisor_client.services.BatteryMonitoringService
+import com.example.supervisor_client.services.MonitoringApplicationInstallsService
 import com.example.supervisor_client.services.MonitoringForegroundService
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -47,7 +49,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val messageNotificationLogDao by lazy {
-        (application as SuperVisorApp).messageLogDatabase.messageNotificationLogDao()
+        (application as SuperVisorApp)
+            .messageLogDatabase
+            .messageNotificationLogDao()
     }
 
     private val locationCollector by lazy {
@@ -91,11 +95,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.etIntervalMinutes.setText(
-            MonitoringConfigStore.getPingIntervalMinutes(this).toString()
+            MonitoringConfigStore
+                .getPingIntervalMinutes(this)
+                .toString()
         )
 
         binding.etBatteryIntervalMinutes.setText(
-            BatteryConfigStore.getPingIntervalMinutes(this).toString()
+            BatteryConfigStore
+                .getPingIntervalMinutes(this)
+                .toString()
         )
 
         binding.btnGrantPermissions.setOnClickListener {
@@ -107,7 +115,8 @@ class MainActivity : AppCompatActivity() {
                 binding.btnTestPing.isEnabled = false
 
                 try {
-                    val ping = locationCollector.collectAndStorePing()
+                    val ping =
+                        locationCollector.collectAndStorePing()
 
                     refreshPermissionStatus(
                         "Last ping: ${ping.status}"
@@ -116,7 +125,9 @@ class MainActivity : AppCompatActivity() {
                     throw cancelled
                 } catch (exception: Exception) {
                     refreshPermissionStatus(
-                        "Ping failed: ${exception.message ?: "unknown error"}"
+                        "Ping failed: ${
+                            exception.message ?: "unknown error"
+                        }"
                     )
                 } finally {
                     if (!isDestroyed) {
@@ -130,13 +141,19 @@ class MainActivity : AppCompatActivity() {
             toggleMonitoringService()
         }
 
-        binding.switchMessageLogging.setOnCheckedChangeListener { _, enabled ->
-            if (updatingMessageLoggingSwitch) return@setOnCheckedChangeListener
+        binding.switchMessageLogging.setOnCheckedChangeListener {
+                _,
+                enabled ->
 
-            MonitoringConfigStore.setMessageNotificationLoggingEnabled(
-                this,
-                enabled
-            )
+            if (updatingMessageLoggingSwitch) {
+                return@setOnCheckedChangeListener
+            }
+
+            MonitoringConfigStore
+                .setMessageNotificationLoggingEnabled(
+                    this,
+                    enabled
+                )
 
             if (enabled && !hasNotificationListenerAccess()) {
                 binding.tvMessageLoggingStatus.setText(
@@ -158,16 +175,22 @@ class MainActivity : AppCompatActivity() {
                 binding.btnBatteryTestPing.isEnabled = false
 
                 try {
-                    val ping = batteryCollector.collectAndStorePing()
+                    val ping =
+                        batteryCollector.collectAndStorePing()
 
                     refreshBatteryStatus(
-                        "Last ping: ${ping.status} | Battery: ${ping.levelPercent ?: "N/A"}%"
+                        "Last ping: ${ping.status} | " +
+                                "Battery: ${
+                                    ping.levelPercent ?: "N/A"
+                                }%"
                     )
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (exception: Exception) {
                     refreshBatteryStatus(
-                        "Ping failed: ${exception.message ?: "unknown error"}"
+                        "Ping failed: ${
+                            exception.message ?: "unknown error"
+                        }"
                     )
                 } finally {
                     if (!isDestroyed) {
@@ -181,7 +204,29 @@ class MainActivity : AppCompatActivity() {
             toggleBatteryMonitoringService()
         }
 
-        // Installed apps / app changes
+        // ---------------------------------------------------------
+        // Application installation monitoring
+        // ---------------------------------------------------------
+
+        // Perform the initial scan of currently installed apps.
+        AppInstallCollectorStub(this).logAllInstalledApps()
+
+        // Start the background service that watches for installs
+        // and uninstalls.
+        val appInstallServiceIntent = Intent(
+            this,
+            MonitoringApplicationInstallsService::class.java
+        )
+
+        ContextCompat.startForegroundService(
+            this,
+            appInstallServiceIntent
+        )
+
+        // ---------------------------------------------------------
+        // Application monitoring screen navigation
+        // ---------------------------------------------------------
+
         binding.viewInstalledAppsButton.setOnClickListener {
             val intent = Intent(
                 this,
@@ -200,6 +245,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // ---------------------------------------------------------
+        // Location logs
+        // ---------------------------------------------------------
+
         lifecycleScope.launch {
             locationDao.getAllPingsFlow().collect { pings ->
                 binding.tvPingLogs.text =
@@ -210,6 +259,10 @@ class MainActivity : AppCompatActivity() {
                     }
             }
         }
+
+        // ---------------------------------------------------------
+        // Battery logs
+        // ---------------------------------------------------------
 
         lifecycleScope.launch {
             batteryDao.getAllPingsFlow().collect { pings ->
@@ -222,15 +275,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // ---------------------------------------------------------
+        // Message notification logs
+        // ---------------------------------------------------------
+
         lifecycleScope.launch {
-            messageNotificationLogDao.getRecentLogsFlow().collect { logs ->
-                binding.tvMessageLogs.text =
-                    logs.joinToString(separator = "\n") {
-                        formatMessageNotificationLog(it)
-                    }.ifEmpty {
-                        getString(R.string.no_message_notification_logs)
-                    }
-            }
+            messageNotificationLogDao
+                .getRecentLogsFlow()
+                .collect { logs ->
+
+                    binding.tvMessageLogs.text =
+                        logs.joinToString(separator = "\n") {
+                            formatMessageNotificationLog(it)
+                        }.ifEmpty {
+                            getString(
+                                R.string.no_message_notification_logs
+                            )
+                        }
+                }
         }
 
         refreshPermissionStatus()
@@ -244,6 +306,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         if (::binding.isInitialized) {
+
             monitoringEnabled =
                 MonitoringForegroundService.isMonitoring
 
@@ -286,13 +349,16 @@ class MainActivity : AppCompatActivity() {
         }.toTypedArray()
 
     private fun toggleMonitoringService() {
+
         if (monitoringEnabled) {
+
             startService(
                 Intent(
                     this,
                     MonitoringForegroundService::class.java
                 ).setAction(
-                    MonitoringForegroundService.ACTION_STOP_MONITORING
+                    MonitoringForegroundService
+                        .ACTION_STOP_MONITORING
                 )
             )
 
@@ -306,12 +372,16 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val intervalMinutes = binding.etIntervalMinutes.text
-            .toString()
-            .trim()
-            .toLongOrNull()
+        val intervalMinutes =
+            binding.etIntervalMinutes.text
+                .toString()
+                .trim()
+                .toLongOrNull()
 
-        if (intervalMinutes == null || intervalMinutes !in 1L..10_080L) {
+        if (
+            intervalMinutes == null ||
+            intervalMinutes !in 1L..10_080L
+        ) {
             binding.etIntervalMinutes.error =
                 "Enter an interval from 1 to 10080 minutes."
 
@@ -321,20 +391,25 @@ class MainActivity : AppCompatActivity() {
         binding.etIntervalMinutes.error = null
 
         if (!hasLocationPermission()) {
+
             refreshPermissionStatus(
                 "Grant location permissions before starting monitoring."
             )
 
-            permissionRequest.launch(requiredPermissions())
+            permissionRequest.launch(
+                requiredPermissions()
+            )
 
             return
         }
 
         try {
-            MonitoringForegroundService.startOrUpdateSchedule(
-                this,
-                intervalMinutes
-            )
+
+            MonitoringForegroundService
+                .startOrUpdateSchedule(
+                    this,
+                    intervalMinutes
+                )
 
             monitoringEnabled = true
             updateMonitoringButton()
@@ -342,7 +417,9 @@ class MainActivity : AppCompatActivity() {
             refreshPermissionStatus(
                 "Scheduled monitoring started."
             )
+
         } catch (exception: Exception) {
+
             monitoringEnabled = false
             updateMonitoringButton()
 
@@ -364,6 +441,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasLocationPermission(): Boolean {
+
         val hasFinePermission =
             ContextCompat.checkSelfPermission(
                 this,
@@ -379,7 +457,10 @@ class MainActivity : AppCompatActivity() {
         return hasFinePermission || hasCoarsePermission
     }
 
-    private fun refreshPermissionStatus(message: String? = null) {
+    private fun refreshPermissionStatus(
+        message: String? = null
+    ) {
+
         val hasFinePermission =
             ContextCompat.checkSelfPermission(
                 this,
@@ -393,16 +474,25 @@ class MainActivity : AppCompatActivity() {
             ) == PackageManager.PERMISSION_GRANTED
 
         val permissionStatus = when {
-            hasFinePermission -> "Fine location granted"
-            hasCoarsePermission -> "Approximate location granted"
-            else -> "Not granted"
+            hasFinePermission ->
+                "Fine location granted"
+
+            hasCoarsePermission ->
+                "Approximate location granted"
+
+            else ->
+                "Not granted"
         }
 
         val locationManager =
-            getSystemService(LOCATION_SERVICE) as LocationManager
+            getSystemService(LOCATION_SERVICE)
+                    as LocationManager
 
         val gpsStatus =
-            if (LocationManagerCompat.isLocationEnabled(locationManager)) {
+            if (
+                LocationManagerCompat
+                    .isLocationEnabled(locationManager)
+            ) {
                 "Enabled"
             } else {
                 "Disabled"
@@ -410,6 +500,7 @@ class MainActivity : AppCompatActivity() {
 
         val notificationStatus =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
                 val granted =
                     ContextCompat.checkSelfPermission(
                         this,
@@ -417,13 +508,19 @@ class MainActivity : AppCompatActivity() {
                     ) == PackageManager.PERMISSION_GRANTED
 
                 "\nNotifications: ${
-                    if (granted) "granted" else "not granted"
+                    if (granted) {
+                        "granted"
+                    } else {
+                        "not granted"
+                    }
                 }"
+
             } else {
                 ""
             }
 
-        val detail = message?.let { "\n$it" } ?: ""
+        val detail =
+            message?.let { "\n$it" } ?: ""
 
         binding.tvPermissionStatus.text =
             "Location permission: $permissionStatus\n" +
@@ -433,6 +530,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasNotificationListenerAccess(): Boolean {
+
         val enabledListeners =
             Settings.Secure.getString(
                 contentResolver,
@@ -454,13 +552,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openNotificationAccessSettings() {
+
         try {
+
             startActivity(
                 Intent(
                     Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
                 )
             )
+
         } catch (_: ActivityNotFoundException) {
+
             MonitoringConfigStore
                 .setMessageNotificationLoggingEnabled(
                     this,
@@ -475,8 +577,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshMessageLoggingStatus(message: String? = null) {
-        val hasAccess = hasNotificationListenerAccess()
+    private fun refreshMessageLoggingStatus(
+        message: String? = null
+    ) {
+
+        val hasAccess =
+            hasNotificationListenerAccess()
 
         val loggingEnabled =
             MonitoringConfigStore
@@ -500,6 +606,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.tvMessageLoggingStatus.text =
             message ?: when {
+
                 loggingEnabled ->
                     getString(
                         R.string.message_notification_logging_on
@@ -520,6 +627,7 @@ class MainActivity : AppCompatActivity() {
     private fun formatPing(
         ping: LocationPingEntity
     ): String {
+
         val timestamp =
             DateTimeFormatter.ISO_INSTANT.format(
                 Instant.ofEpochMilli(ping.timestamp)
@@ -532,23 +640,29 @@ class MainActivity : AppCompatActivity() {
             ping.longitude?.toString() ?: "N/A"
 
         val accuracy =
-            ping.accuracyRadius?.let { "$it m" } ?: "N/A"
+            ping.accuracyRadius
+                ?.let { "$it m" }
+                ?: "N/A"
 
         return "ID: ${ping.id} | UTC: $timestamp\n" +
-                "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
+                "Lat/Lng: $latitude, $longitude | " +
+                "Accuracy: $accuracy\n" +
                 "Signal: ${ping.signalQuality} | " +
                 "Status: ${ping.status} | " +
                 "Synced: ${ping.isSynced}"
     }
 
     private fun toggleBatteryMonitoringService() {
+
         if (batteryMonitoringEnabled) {
+
             startService(
                 Intent(
                     this,
                     BatteryMonitoringService::class.java
                 ).setAction(
-                    BatteryMonitoringService.ACTION_STOP_MONITORING
+                    BatteryMonitoringService
+                        .ACTION_STOP_MONITORING
                 )
             )
 
@@ -572,6 +686,7 @@ class MainActivity : AppCompatActivity() {
             intervalMinutes == null ||
             intervalMinutes !in 1L..10_080L
         ) {
+
             binding.etBatteryIntervalMinutes.error =
                 "Enter an interval from 1 to 10080 minutes."
 
@@ -581,10 +696,12 @@ class MainActivity : AppCompatActivity() {
         binding.etBatteryIntervalMinutes.error = null
 
         try {
-            BatteryMonitoringService.startOrUpdateSchedule(
-                this,
-                intervalMinutes
-            )
+
+            BatteryMonitoringService
+                .startOrUpdateSchedule(
+                    this,
+                    intervalMinutes
+                )
 
             batteryMonitoringEnabled = true
             updateBatteryMonitoringButton()
@@ -592,7 +709,9 @@ class MainActivity : AppCompatActivity() {
             refreshBatteryStatus(
                 "Battery monitoring started."
             )
+
         } catch (exception: Exception) {
+
             batteryMonitoringEnabled = false
             updateBatteryMonitoringButton()
 
@@ -605,6 +724,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateBatteryMonitoringButton() {
+
         binding.btnBatteryToggleService.text =
             if (batteryMonitoringEnabled) {
                 "Stop Battery Monitoring"
@@ -613,7 +733,10 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun refreshBatteryStatus(message: String? = null) {
+    private fun refreshBatteryStatus(
+        message: String? = null
+    ) {
+
         val state =
             if (batteryMonitoringEnabled) {
                 "running"
@@ -631,18 +754,26 @@ class MainActivity : AppCompatActivity() {
     private fun formatBatteryPing(
         ping: BatteryPingEntity
     ): String {
+
         val timestamp =
             DateTimeFormatter.ISO_INSTANT.format(
                 Instant.ofEpochMilli(ping.timestamp)
             )
 
         val level =
-            ping.levelPercent?.let { "$it%" } ?: "N/A"
+            ping.levelPercent
+                ?.let { "$it%" }
+                ?: "N/A"
 
         val charging = when (ping.isCharging) {
-            true -> "Charging (${ping.plugType})"
-            false -> "Not charging"
-            null -> "N/A"
+            true ->
+                "Charging (${ping.plugType})"
+
+            false ->
+                "Not charging"
+
+            null ->
+                "N/A"
         }
 
         val temp =
@@ -651,10 +782,12 @@ class MainActivity : AppCompatActivity() {
                 ?: "N/A"
 
         return "ID: ${ping.id} | UTC: $timestamp\n" +
-                "Level: $level (${ping.levelCategory}) | $charging\n" +
+                "Level: $level (${ping.levelCategory}) | " +
+                "$charging\n" +
                 "Health: ${ping.health ?: "N/A"} | " +
                 "Temp: $temp | " +
-                "Power save: ${ping.isPowerSaveMode ?: "N/A"}\n" +
+                "Power save: " +
+                "${ping.isPowerSaveMode ?: "N/A"}\n" +
                 "Status: ${ping.status} | " +
                 "Synced: ${ping.isSynced}"
     }
@@ -662,6 +795,7 @@ class MainActivity : AppCompatActivity() {
     private fun formatMessageNotificationLog(
         log: MessageNotificationLogEntity
     ): String {
+
         val timestamp =
             DateTimeFormatter.ISO_INSTANT.format(
                 Instant.ofEpochMilli(log.timestamp)
@@ -671,6 +805,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private companion object {
+
         const val KEY_ENABLED_NOTIFICATION_LISTENERS =
             "enabled_notification_listeners"
     }
