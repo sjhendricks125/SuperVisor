@@ -9,6 +9,7 @@
 | AndroidX WorkManager | Schedules daily maintenance that removes location pings older than 30 days. |
 | Contacts | Android ContactsContract API | Retrieves contact names and phone numbers stored on the device. |
 | Contacts | Android ContentResolver API | Queries the device's contacts provider. |
+| Battery | Android BatteryManager and sticky ACTION_BATTERY_CHANGED broadcast. | Reads Battery Details |
 There is **no SuperVisor backend or HTTP API integration implemented** 
 `ApiSyncClient` is only a placeholder interface 
 `SyncWorker` contains a TODO for future synchronization
