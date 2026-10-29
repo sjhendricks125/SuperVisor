@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         (application as SuperVisorApp).database.locationPingDao()
     }
     private val messageNotificationLogDao by lazy {
-        (application as SuperVisorApp).database.messageNotificationLogDao()
+        (application as SuperVisorApp).messageLogDatabase.messageNotificationLogDao()
     }
     private val locationCollector by lazy {
         LocationCollectorStub(this, locationDao)

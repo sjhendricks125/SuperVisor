@@ -16,7 +16,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
     <!-- Broad visibility is required for the planned all-app inventory; verify Play eligibility before release. -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"

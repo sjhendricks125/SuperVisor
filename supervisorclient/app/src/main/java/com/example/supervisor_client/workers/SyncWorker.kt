@@ -15,7 +15,9 @@ class SyncWorker(
         val cutoff = AppDatabase.thirtyDayCutoffMillis()
         val dao = database.locationPingDao()
         dao.purgePingsOlderThan(cutoff)
-        database.messageNotificationLogDao().purgeLogsOlderThan(cutoff)
+        (applicationContext as SuperVisorApp).messageLogDatabase
+            .messageNotificationLogDao()
+            .purgeLogsOlderThan(cutoff)
         val unsynced = dao.getUnsyncedPings()
         // TODO: Sync unsynced pings with ApiSyncClient and pass remote officer interval to MonitoringConfigStore.setPingIntervalMinutes()
         return Result.success()
