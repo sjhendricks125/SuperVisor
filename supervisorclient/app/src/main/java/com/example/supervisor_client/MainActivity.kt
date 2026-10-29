@@ -3,25 +3,20 @@ package com.example.supervisor_client
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.supervisor_client.collectors.location.LocationCollectorStub
-import com.example.supervisor_client.data.local.LocationPingEntity
+import com.example.supervisor_client.collectors.battery.BatteryCollector
+import com.example.supervisor_client.data.local.BatteryPingEntity
 import com.example.supervisor_client.data.local.MonitoringConfigStore
 import com.example.supervisor_client.databinding.ActivityMainBinding
 import com.example.supervisor_client.services.MonitoringForegroundService
-
-import com.example.supervisor_client.collectors.battery.BatteryCollector
-import com.example.supervisor_client.data.local.BatteryPingEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -32,26 +27,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var monitoringEnabled = false
 
-    private val locationDao by lazy {
-        (application as SuperVisorApp).database.locationPingDao()
-    }
-    private val locationCollector by lazy {
-        LocationCollectorStub(this, locationDao)
-    }
-
     private val batteryDao by lazy {
         (application as SuperVisorApp).database.batteryPingDao()
     }
-
     private val batteryCollector by lazy {
         BatteryCollector(this, batteryDao)
     }
 
-
     private val permissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        refreshPermissionStatus()
+        refreshStatus()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,15 +61,14 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 binding.btnTestPing.isEnabled = false
                 try {
-                    val ping = locationCollector.collectAndStorePing()
-                    val batteryPing = batteryCollector.collectAndStorePing()
-                    refreshPermissionStatus("Last ping: ${ping.status}")
+                    val ping = batteryCollector.collectAndStorePing()
+                    refreshStatus(
+                        "Last ping: ${ping.status} | Battery: ${ping.levelPercent ?: "N/A"}%"
+                    )
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (exception: Exception) {
-                    refreshPermissionStatus(
-                        "Ping failed: ${exception.message ?: "unknown error"}"
-                    )
+                    refreshStatus("Ping failed: ${exception.message ?: "unknown error"}")
                 } finally {
                     if (!isDestroyed) {
                         binding.btnTestPing.isEnabled = true
@@ -96,20 +81,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            locationDao.getAllPingsFlow().collect { pings ->
-                binding.tvPingLogs.text = pings.joinToString(separator = "\n\n") {
-                    formatPing(it)
-                }.ifEmpty { "No location pings yet." }
-            }
-        }
-        lifecycleScope.launch {
             batteryDao.getAllPingsFlow().collect { pings ->
                 binding.tvBatteryLogs.text = pings.joinToString(separator = "\n\n") {
                     formatBatteryPing(it)
                 }.ifEmpty { "No battery pings yet." }
             }
         }
-        refreshPermissionStatus()
+        refreshStatus()
         updateMonitoringButton()
     }
 
@@ -123,14 +101,13 @@ class MainActivity : AppCompatActivity() {
                     MonitoringConfigStore.getPingIntervalMinutes(this).toString()
                 )
             }
-            refreshPermissionStatus()
+            refreshStatus()
         }
     }
 
+    // Battery needs no permissions; only notifications (Android 13+) for the foreground service
     private fun requiredPermissions(): Array<String> =
         buildList {
-            add(Manifest.permission.ACCESS_FINE_LOCATION)
-            add(Manifest.permission.ACCESS_COARSE_LOCATION)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -144,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             )
             monitoringEnabled = false
             updateMonitoringButton()
-            refreshPermissionStatus("Scheduled monitoring stopped.")
+            refreshStatus("Scheduled monitoring stopped.")
             return
         }
 
@@ -158,23 +135,15 @@ class MainActivity : AppCompatActivity() {
         }
         binding.etIntervalMinutes.error = null
 
-        if (!hasLocationPermission()) {
-            refreshPermissionStatus("Grant location permissions before starting monitoring.")
-            permissionRequest.launch(requiredPermissions())
-            return
-        }
-
         try {
             MonitoringForegroundService.startOrUpdateSchedule(this, intervalMinutes)
             monitoringEnabled = true
             updateMonitoringButton()
-            refreshPermissionStatus("Scheduled monitoring started.")
+            refreshStatus("Scheduled monitoring started.")
         } catch (exception: Exception) {
             monitoringEnabled = false
             updateMonitoringButton()
-            refreshPermissionStatus(
-                "Unable to start monitoring: ${exception.message ?: "unknown error"}"
-            )
+            refreshStatus("Unable to start monitoring: ${exception.message ?: "unknown error"}")
         }
     }
 
@@ -186,62 +155,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        val hasFinePermission = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCoarsePermission = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        return hasFinePermission || hasCoarsePermission
-    }
-
-    private fun refreshPermissionStatus(message: String? = null) {
-        val hasFinePermission = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCoarsePermission = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val permissionStatus = when {
-            hasFinePermission -> "Fine location granted"
-            hasCoarsePermission -> "Approximate location granted"
-            else -> "Not granted"
-        }
-        val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
-        val gpsStatus = if (LocationManagerCompat.isLocationEnabled(locationManager)) {
-            "Enabled"
-        } else {
-            "Disabled"
-        }
+    private fun refreshStatus(message: String? = null) {
         val notificationStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
-            "\nNotifications: ${if (granted) "granted" else "not granted"}"
+            "Notifications: ${if (granted) "granted" else "not granted"}"
         } else {
-            ""
+            "Notifications: not required"
         }
         val detail = message?.let { "\n$it" } ?: ""
-        binding.tvPermissionStatus.text =
-            "Location permission: $permissionStatus\nGPS: $gpsStatus$notificationStatus$detail"
-    }
-
-    private fun formatPing(ping: LocationPingEntity): String {
-        val timestamp = DateTimeFormatter.ISO_INSTANT.format(
-            Instant.ofEpochMilli(ping.timestamp)
-        )
-        val latitude = ping.latitude?.toString() ?: "N/A"
-        val longitude = ping.longitude?.toString() ?: "N/A"
-        val accuracy = ping.accuracyRadius?.let { "$it m" } ?: "N/A"
-        return "ID: ${ping.id} | UTC: $timestamp\n" +
-            "Lat/Lng: $latitude, $longitude | Accuracy: $accuracy\n" +
-            "Signal: ${ping.signalQuality} | Status: ${ping.status} | Synced: ${ping.isSynced}"
+        binding.tvPermissionStatus.text = "$notificationStatus$detail"
     }
 
     private fun formatBatteryPing(ping: BatteryPingEntity): String {
