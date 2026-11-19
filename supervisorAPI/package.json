@@ -1,0 +1,27 @@
+{
+  "name": "supervisor-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "tsx --test test/sync.test.ts"
+  },
+  "dependencies": {
+    "@fastify/type-provider-typebox": "^5.0.0",
+    "@sinclair/typebox": "^0.34.40",
+    "@supabase/supabase-js": "^2.57.4",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
